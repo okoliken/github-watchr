@@ -1,9 +1,10 @@
+import "dotenv/config";
 import * as fs from "fs";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-const GITHUB_REPO = "testfiesta/testfiesta-frontend";
-const WEBHOOK_URL = process.env.WEBHOOK_URL || "https://us-central1-goalmatics.cloudfunctions.net/webhook/j5z2447v";
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_REPO = (process.env.GITHUB_REPO || "testfiesta/testfiesta-frontend").trim();
+const WEBHOOK_URL = (process.env.WEBHOOK_URL || "https://us-central1-goalmatics.cloudfunctions.net/webhook/j5z2447v").trim();
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN?.trim();
 const POLL_INTERVAL_MS = 60_000; // 60 seconds
 const STATE_FILE = "./seen_issues.json";
 // ───────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ async function fetchIssues(): Promise<GitHubIssue[]> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "github-watchr",
   };
 
   if (GITHUB_TOKEN) {
@@ -57,7 +59,9 @@ async function fetchIssues(): Promise<GitHubIssue[]> {
   const res = await fetch(url, { headers });
 
   if (!res.ok) {
-    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    const bodyText = await res.text();
+    const details = bodyText ? ` - ${bodyText.slice(0, 300)}` : "";
+    throw new Error(`GitHub API error: ${res.status} ${res.statusText}${details}`);
   }
 
   return res.json() as Promise<GitHubIssue[]>;
@@ -108,6 +112,10 @@ async function poll(seen: Set<number>): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (!/^[^/\s]+\/[^/\s]+$/.test(GITHUB_REPO)) {
+    throw new Error(`Invalid GITHUB_REPO value "${GITHUB_REPO}". Expected format: owner/repo`);
+  }
+
   console.log(`🚀 Watching ${GITHUB_REPO} for new issues...`);
   console.log(`📡 Webhook: ${WEBHOOK_URL}`);
   console.log(`⏱  Polling every ${POLL_INTERVAL_MS / 1000}s\n`);
