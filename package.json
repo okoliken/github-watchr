@@ -1,0 +1,16 @@
+{
+    "name": "github-issue-watcher",
+    "version": "1.0.0",
+    "description": "Polls a GitHub repo for new issues and forwards them to a webhook",
+    "main": "watcher.ts",
+    "scripts": {
+        "start": "npx ts-node watcher.ts",
+        "dev": "npx ts-node --watch watcher.ts"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "typescript": "^5.4.0",
+        "ts-node": "^10.9.2",
+        "@types/node": "^20.0.0"
+    }
+}

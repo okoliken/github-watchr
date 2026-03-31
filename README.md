@@ -44,12 +44,12 @@ Each new issue sends a POST with this JSON body:
 
 ## Notes
 
-- On first run, existing issues are recorded but not sent to the webhook (to avoid spam).
+- On first run, existing issues are recorded but **not** sent to the webhook (to avoid spam).
 - Seen issue IDs are persisted in `seen_issues.json` so restarts don't re-notify.
-- Default poll interval: 60 seconds.
+- Default poll interval: **60 seconds**.
 
 ## Discord / Slack Webhooks
 
-- The payload works out of the box with most webhook services.
-- For Discord, change the `text` key to `content`.
-- For Slack, the `text` field already matches the expected format.
+The payload works out of the box with most webhook services. For **Discord**, 
+change the `text` key to `content`. For **Slack**, it already matches the 
+expected `text` field format.
