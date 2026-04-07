@@ -5,6 +5,8 @@ import * as fs from "fs";
 const GITHUB_REPO = (process.env.GITHUB_REPO || "testfiesta/testfiesta-frontend").trim();
 const WEBHOOK_URL = (process.env.WEBHOOK_URL || "https://us-central1-goalmatics.cloudfunctions.net/webhook/j5z2447v").trim();
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN?.trim();
+const GITHUB_ASSIGNEE = process.env.GITHUB_ASSIGNEE?.trim(); // Your GitHub username
+const HIGH_PRIORITY_LABELS = (process.env.HIGH_PRIORITY_LABELS || "high,medium").split(",").map(l => l.trim().toLowerCase());
 const POLL_INTERVAL_MS = 60_000; // 60 seconds
 const STATE_FILE = "./seen_issues.json";
 // ───────────────────────────────────────────────────────────────────────────
@@ -67,6 +69,33 @@ async function fetchIssues(): Promise<GitHubIssue[]> {
   return res.json() as Promise<GitHubIssue[]>;
 }
 
+function isHighPriority(issue: GitHubIssue): boolean {
+  return issue.labels.some((l) => HIGH_PRIORITY_LABELS.includes(l.name.toLowerCase()));
+}
+
+async function assignIssue(issueNumber: number): Promise<void> {
+  if (!GITHUB_ASSIGNEE || !GITHUB_TOKEN) return;
+
+  const url = `https://api.github.com/repos/${GITHUB_REPO}/issues/${issueNumber}/assignees`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "github-watchr",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ assignees: [GITHUB_ASSIGNEE] }),
+  });
+
+  if (!res.ok) {
+    console.error(`❌ Failed to assign issue #${issueNumber}: ${res.status} ${res.statusText}`);
+  } else {
+    console.log(`📌 Auto-assigned issue #${issueNumber} to ${GITHUB_ASSIGNEE}`);
+  }
+}
+
 async function sendToWebhook(issue: GitHubIssue): Promise<void> {
   const payload: WebhookPayload = {
     text: `🆕 New Issue on ${GITHUB_REPO}: #${issue.number} — ${issue.title}`,
@@ -102,6 +131,9 @@ async function poll(seen: Set<number>): Promise<void> {
       if (!seen.has(issue.number)) {
         seen.add(issue.number);
         await sendToWebhook(issue);
+        if (isHighPriority(issue)) {
+          await assignIssue(issue.number);
+        }
       }
     }
 
